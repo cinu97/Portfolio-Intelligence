@@ -1,0 +1,94 @@
+"""
+SQLite database manager for Portfolio Intelligence.
+"""
+
+from __future__ import annotations
+
+import logging
+import sqlite3
+from pathlib import Path
+
+from config.settings import settings
+
+LOGGER = logging.getLogger(__name__)
+
+
+class DatabaseManager:
+    """Handles SQLite database initialization and connections."""
+
+    def __init__(self) -> None:
+        self.db_path: Path = settings.DATABASE_PATH
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+
+    def connect(self) -> sqlite3.Connection:
+        """Create a SQLite connection."""
+        return sqlite3.connect(self.db_path)
+
+    def initialize(self) -> None:
+        """Create all required database tables."""
+
+        with self.connect() as conn:
+            cursor = conn.cursor()
+
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS schema_version (
+                    version TEXT PRIMARY KEY,
+                    created_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS watchlist (
+                    symbol TEXT PRIMARY KEY,
+                    exchange TEXT,
+                    instrument_type TEXT
+                )
+            """)
+
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS market_prices (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    symbol TEXT,
+                    trade_date TEXT,
+                    live_price REAL,
+                    previous_close REAL,
+                    day_change REAL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS portfolio (
+                    symbol TEXT PRIMARY KEY,
+                    quantity REAL,
+                    average_price REAL
+                )
+            """)
+
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS recommendations (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    trade_date TEXT,
+                    symbol TEXT,
+                    buy_score INTEGER,
+                    recommendation TEXT
+                )
+            """)
+
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS market_summary (
+                    trade_date TEXT PRIMARY KEY,
+                    market_status TEXT,
+                    top_opportunity TEXT,
+                    comments TEXT
+                )
+            """)
+
+            cursor.execute("""
+                INSERT OR IGNORE INTO schema_version(version)
+                VALUES('1.0.0')
+            """)
+
+            conn.commit()
+
+        LOGGER.info("SQLite database initialized successfully.")

@@ -1,0 +1,9 @@
+pandas>=2.2.0
+yfinance>=0.2.65
+
+gspread>=6.0.0
+gspread-dataframe>=4.0.0
+
+google-auth>=2.40.0
+
+python-dotenv>=1.1.0

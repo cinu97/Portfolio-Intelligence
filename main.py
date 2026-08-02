@@ -1,12 +1,18 @@
-from market.fetch_prices import fetch_latest_prices
+from portfolio.loader import PortfolioLoader
 
-symbols = [
-    "NIFTYBEES",
-    "BANKBEES",
-    "PHARMABEES",
-]
+loader = PortfolioLoader()
 
-prices = fetch_latest_prices(symbols)
+symbols = loader.get_symbols()
 
-for p in prices:
-    print(p)
+print()
+
+print("Portfolio Symbols")
+
+print("-" * 50)
+
+for symbol in symbols:
+    print(symbol)
+
+print()
+
+print(f"Total Symbols : {len(symbols)}")

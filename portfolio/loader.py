@@ -19,9 +19,28 @@ from config.settings import settings
 
 LOGGER = logging.getLogger(__name__)
 
+from dataclasses import dataclass
+
+
+@dataclass(slots=True)
+class Holding:
+
+    symbol: str
+
+    quantity: float
+
+    average_price: float
+
+    invested_value: float
+
+    current_value: float
+
+    pnl: float
+
+    pnl_percent: float
 
 class PortfolioLoader:
-
+    
     def __init__(self):
 
         self.holdings_file = settings.DATA_DIR / "holdings.csv"
@@ -115,3 +134,5 @@ class PortfolioLoader:
         )
 
         return result
+
+        

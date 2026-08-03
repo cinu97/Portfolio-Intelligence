@@ -1,39 +1,29 @@
-"""
-Historical market data.
-"""
-
 from __future__ import annotations
 
-from dataclasses import dataclass
+import logging
 
 import yfinance as yf
 
-
-@dataclass
-class HistoricalDay:
-    date: str
-    close: float
+LOGGER = logging.getLogger(__name__)
 
 
-def load_history(symbol: str, days: int = 7) -> list[HistoricalDay]:
+class HistoryService:
 
-    ticker = yf.Ticker(f"{symbol}.NS")
+    def get_history(self, symbol: str):
 
-    history = ticker.history(period=f"{days + 5}d")
+        try:
 
-    if history.empty:
-        return []
+            ticker = yf.Ticker(f"{symbol}.NS")
 
-    history = history.tail(days)
+            df = ticker.history(period="15d")
 
-    output: list[HistoricalDay] = []
+            if df.empty:
+                return None
 
-    for date, row in history.iterrows():
-        output.append(
-            HistoricalDay(
-                date=date.strftime("%Y-%m-%d"),
-                close=round(float(row["Close"]), 2),
-            )
-        )
+            return df
 
-    return output
+        except Exception as ex:
+
+            LOGGER.error("%s : %s", symbol, ex)
+
+            return None

@@ -1,57 +1,101 @@
-"""
-Market data retrieval using Yahoo Finance.
-"""
-
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Iterable
+import logging
 
-import yfinance as yf
+from market.history import HistoryService
+from market.models import MarketData
 
-
-@dataclass
-class LivePrice:
-    symbol: str
-    live_price: float
-    previous_close: float
-    day_change_percent: float
+LOGGER = logging.getLogger(__name__)
 
 
-def fetch_latest_prices(symbols: Iterable[str]) -> list[LivePrice]:
-    """
-    Fetch latest prices for NSE symbols.
+class MarketDataService:
+    def __init__(self):
+        self.history = HistoryService()
 
-    Example input:
-        ["NIFTYBEES", "BANKBEES"]
-    """
+    @staticmethod
+    def _pct(current: float, reference: float) -> float:
+        if reference == 0:
+            return 0.0
+        return round(((current - reference) / reference) * 100, 2)
 
-    output: list[LivePrice] = []
+    def fetch(self, symbols: list[str]) -> list[MarketData]:
 
-    for symbol in symbols:
-        ticker = yf.Ticker(f"{symbol}.NS")
+        results: list[MarketData] = []
 
-        try:
-            info = ticker.fast_info
+        for symbol in symbols:
 
-            live = float(info["lastPrice"])
-            previous = float(info["previousClose"])
+            df = self.history.get_history(symbol)
 
-            if previous:
-                change = round(((live - previous) / previous) * 100, 2)
-            else:
-                change = 0.0
+            if df is None or df.empty:
+                LOGGER.warning("No history found for %s", symbol)
+                continue
 
-            output.append(
-                LivePrice(
+            df = df.tail(8)
+
+            if len(df) < 8:
+                LOGGER.warning(
+                    "Skipping %s. Need 8 trading days, got %d",
+                    symbol,
+                    len(df),
+                )
+                continue
+
+            closes = [round(float(x), 2) for x in df["Close"].tolist()]
+
+            live = closes[-1]
+            previous = closes[-2]
+
+            t2 = closes[-3]
+            t3 = closes[-4]
+            t5 = closes[-6]
+            t7 = closes[-8]
+
+            results.append(
+                MarketData(
                     symbol=symbol,
-                    live_price=round(live, 2),
-                    previous_close=round(previous, 2),
-                    day_change_percent=change,
+
+                    live_price=live,
+
+                    previous_close=previous,
+
+                    day_change_percent=self._pct(
+                        live,
+                        previous,
+                    ),
+
+                    t2_close=t2,
+                    t2_percent=self._pct(
+                        live,
+                        t2,
+                    ),
+
+                    t3_close=t3,
+                    t3_percent=self._pct(
+                        live,
+                        t3,
+                    ),
+
+                    t5_close=t5,
+                    t5_percent=self._pct(
+                        live,
+                        t5,
+                    ),
+
+                    t7_close=t7,
+                    t7_percent=self._pct(
+                        live,
+                        t7,
+                    ),
+
+                    buy_score=0,
+
+                    recommendation="",
                 )
             )
 
-        except Exception as exc:
-            print(f"Unable to fetch {symbol}: {exc}")
+        LOGGER.info(
+            "Fetched market data for %d symbols",
+            len(results),
+        )
 
-    return output
+        return results

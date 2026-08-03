@@ -1,12 +1,27 @@
-"""Data models used across the project."""
+from __future__ import annotations
 
 from dataclasses import dataclass
 
 
-@dataclass
+@dataclass(slots=True)
 class MarketData:
-    """Simple container for market quote data."""
-
     symbol: str
-    price: float
-    timestamp: str | None = None
+
+    live_price: float
+    previous_close: float
+    day_change_percent: float
+
+    t2_close: float
+    t2_percent: float
+
+    t3_close: float
+    t3_percent: float
+
+    t5_close: float
+    t5_percent: float
+
+    t7_close: float
+    t7_percent: float
+
+    buy_score: int = 0
+    recommendation: str = ""

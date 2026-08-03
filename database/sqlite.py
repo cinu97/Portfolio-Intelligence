@@ -92,3 +92,65 @@ class DatabaseManager:
             conn.commit()
 
         LOGGER.info("SQLite database initialized successfully.")
+    def save_market_snapshot(
+        self,
+        market_data,
+        recommendation,
+    ) -> None:
+
+        with self.connect() as conn:
+
+            cursor = conn.cursor()
+
+            cursor.execute(
+                """
+                INSERT INTO market_prices
+                (
+                    symbol,
+                    trade_date,
+                    live_price,
+                    previous_close,
+                    day_change
+                )
+                VALUES
+                (
+                    ?,
+                    DATE('now'),
+                    ?,
+                    ?,
+                    ?
+                )
+                """,
+                (
+                    market_data.symbol,
+                    market_data.live_price,
+                    market_data.previous_close,
+                    market_data.day_change_percent,
+                ),
+            )
+
+            cursor.execute(
+                """
+                INSERT INTO recommendations
+                (
+                    trade_date,
+                    symbol,
+                    buy_score,
+                    recommendation
+                )
+                VALUES
+                (
+                    DATE('now'),
+                    ?,
+                    ?,
+                    ?
+                )
+                """,
+                (
+                    recommendation.symbol,
+                    recommendation.buy_score,
+                    recommendation.action,
+                ),
+            )
+
+            conn.commit()

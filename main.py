@@ -1,8 +1,11 @@
+from database.sqlite import DatabaseManager
 from portfolio.loader import PortfolioLoader
 from market.fetch_prices import MarketDataService
 from analytics.recommendation import RecommendationEngine
+from gsheets.sheets import GoogleSheetsService
+import pandas as pd
 
-
+print("=== MAIN STARTED ===")
 def main():
 
     loader = PortfolioLoader()
@@ -15,14 +18,27 @@ def main():
 
     engine = RecommendationEngine()
 
+    database = DatabaseManager()
+
+    database.initialize()
+    
+    google = GoogleSheetsService()
+
     recommendations = []
 
     for price in prices:
 
+        recommendation = engine.generate(price)
+
+        database.save_market_snapshot(
+            price,
+            recommendation,
+        )
+
         recommendations.append(
             (
                 price,
-                engine.generate(price),
+                recommendation,
             )
         )
 
@@ -30,6 +46,40 @@ def main():
         key=lambda x: x[1].buy_score,
         reverse=True,
     )
+    
+    dashboard_rows = []
+
+    for market_data, recommendation in recommendations:
+
+        dashboard_rows.append(
+            {
+                "Symbol": market_data.symbol,
+                "Live": market_data.live_price,
+                "Prev Close": market_data.previous_close,
+                "Day %": market_data.day_change_percent,
+                "T5 Close": market_data.t5_close,
+                "T5 %": market_data.t5_percent,
+                "T7 Close": market_data.t7_close,
+                "T7 %": market_data.t7_percent,
+                "Score": recommendation.buy_score,
+                "Action": recommendation.action,
+                "Amount": recommendation.suggested_amount,
+            }
+        )
+
+    dashboard_df = pd.DataFrame(dashboard_rows)
+
+    google.dashboard(dashboard_df)
+    
+    top_df = dashboard_df.head(10)
+
+    google.opportunities(top_df)
+    
+    google.history(dashboard_df)
+    
+    holdings = loader.load_holdings()
+
+    google.portfolio(holdings)
 
     print()
 

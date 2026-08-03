@@ -8,7 +8,7 @@ import logging
 
 import pandas as pd
 
-from google.auth import get_google_client
+from gsheets.auth import get_google_client
 from config.constants import Worksheets
 from config.settings import settings
 
@@ -116,5 +116,35 @@ class GoogleSheetsService:
 
         self.write_dataframe(
             Worksheets.DASHBOARD,
+            dataframe,
+        )
+        
+    def opportunities(
+        self,
+        dataframe: pd.DataFrame,
+    ):
+
+        self.write_dataframe(
+            "Top Opportunities",
+            dataframe,
+        )
+
+    def history(
+        self,
+        dataframe: pd.DataFrame,
+    ):
+
+        self.write_dataframe(
+            "Market History",
+            dataframe,
+        )
+        
+    def portfolio(
+        self,
+        dataframe: pd.DataFrame,
+    ):
+
+        self.write_dataframe(
+            "Portfolio",
             dataframe,
         )

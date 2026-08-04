@@ -57,6 +57,8 @@ class GoogleSheetsService:
 
         worksheet.clear()
 
+        # Replace NaN/None with empty string
+        dataframe = dataframe.fillna("")
         values = [
             dataframe.columns.tolist()
         ]

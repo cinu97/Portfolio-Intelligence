@@ -30,18 +30,33 @@ class MarketDataService:
                 LOGGER.warning("No history found for %s", symbol)
                 continue
 
-            df = df.tail(8)
+                        # Keep only valid close prices
+            df = (
+                df.dropna(subset=["Close"])
+                  .tail(8)
+            )
 
             if len(df) < 8:
                 LOGGER.warning(
-                    "Skipping %s. Need 8 trading days, got %d",
+                    "Skipping %s. Need 8 valid trading days, got %d",
+                    symbol,
+                    len(df),
+                )
+                continue
+
+
+            # Remove rows having NaN Close values
+            df = df.dropna(subset=["Close"])
+
+            if len(df) < 8:
+                LOGGER.warning(
+                    "Skipping %s. Need 8 valid trading days, got %d",
                     symbol,
                     len(df),
                 )
                 continue
 
             closes = [round(float(x), 2) for x in df["Close"].tolist()]
-
             live = closes[-1]
             previous = closes[-2]
 

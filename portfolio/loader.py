@@ -11,25 +11,31 @@ Returns a unique list of symbols.
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
+
 import pandas as pd
 
 from config.settings import settings
 
 LOGGER = logging.getLogger(__name__)
 
-from dataclasses import dataclass
+SYMBOL_COLUMN_ALIASES = ("Instrument", "Symbol", "Trading Symbol")
+HOLDING_COLUMN_ALIASES = {
+    "symbol": SYMBOL_COLUMN_ALIASES,
+    "quantity": ("Qty.", "Quantity"),
+    "average_price": ("Avg. cost", "Average Price"),
+    "invested_value": ("Invested", "Invested Value"),
+    "current_value": ("Cur. val", "Current Value"),
+    "pnl": ("P&L", "PnL"),
+    "pnl_percent": ("Net chg.", "PnL %"),
+}
 
 
 @dataclass(slots=True)
 class Holding:
-    symbol: str
-    quantity: float
-    average_price: float
-    invested_value: float
-    current_value: float
-    pnl: float
-    pnl_percent: float
+    """A normalized holding row loaded from the portfolio CSV."""
 
+    symbol: str
     quantity: float = 0.0
     average_price: float = 0.0
     invested_value: float = 0.0
@@ -37,14 +43,17 @@ class Holding:
     pnl: float = 0.0
     pnl_percent: float = 0.0
 
+
 class PortfolioLoader:
-    
-    def __init__(self):
+    """Load the existing holdings and watchlist CSV files."""
+
+    def __init__(self) -> None:
 
         self.holdings_file = settings.DATA_DIR / "holdings.csv"
         self.watchlist_file = settings.DATA_DIR / "watchlist.csv"
 
     def load_holdings(self) -> pd.DataFrame:
+        """Return the source holdings CSV without transforming its columns."""
 
         if not self.holdings_file.exists():
             LOGGER.warning("holdings.csv not found")
@@ -53,6 +62,7 @@ class PortfolioLoader:
         return pd.read_csv(self.holdings_file)
 
     def load_watchlist(self) -> pd.DataFrame:
+        """Return the source watchlist CSV or its existing empty fallback."""
 
         if not self.watchlist_file.exists():
             LOGGER.info("watchlist.csv not found")
@@ -70,19 +80,9 @@ class PortfolioLoader:
         if dataframe.empty:
             return {}
 
-        required_columns = {
-            "symbol": ("Instrument", "Symbol", "Trading Symbol"),
-            "quantity": ("Qty.", "Quantity"),
-            "average_price": ("Avg. cost", "Average Price"),
-            "invested_value": ("Invested", "Invested Value"),
-            "current_value": ("Cur. val", "Current Value"),
-            "pnl": ("P&L", "PnL"),
-            "pnl_percent": ("Net chg.", "PnL %"),
-        }
-
         columns = {
             name: next((column for column in candidates if column in dataframe.columns), None)
-            for name, candidates in required_columns.items()
+            for name, candidates in HOLDING_COLUMN_ALIASES.items()
         }
         missing = [name for name, column in columns.items() if column is None]
 
@@ -110,6 +110,7 @@ class PortfolioLoader:
         return records
 
     def get_symbols(self) -> list[str]:
+        """Return unique normalized symbols from holdings and watchlist files."""
 
         symbols: set[str] = set()
 
@@ -117,17 +118,11 @@ class PortfolioLoader:
 
         if not holdings.empty:
 
-            possible_columns = [
-                "Instrument",
-                "Symbol",
-                "Trading Symbol",
-            ]
-
             column = next(
                 (
-                    c
-                    for c in possible_columns
-                    if c in holdings.columns
+                    candidate
+                    for candidate in SYMBOL_COLUMN_ALIASES
+                    if candidate in holdings.columns
                 ),
                 None,
             )

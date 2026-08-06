@@ -1,5 +1,8 @@
 from dataclasses import dataclass
 
+from analytics.portfolio_context import PortfolioContext
+from analytics.rules.base import InvestmentRule, RuleContribution, RuleResult
+
 
 @dataclass(slots=True)
 class AverageBuyResult:
@@ -7,9 +10,29 @@ class AverageBuyResult:
     reason: str
 
 
-class AverageBuyRule:
+class AverageBuyRule(InvestmentRule):
+    """Score a price's discount relative to the average buy price."""
 
     MAX_SCORE = 30
+    key = "average_buy"
+
+    def evaluate(self, context: PortfolioContext) -> RuleResult:
+        """Adapt the existing average-buy calculation to the rule interface."""
+        result = self.calculate(context.average_price, context.current_price)
+        return RuleResult(
+            score=result.score,
+            reasons=[result.reason],
+            max_score=self.MAX_SCORE,
+            contributions=[
+                RuleContribution(
+                    rule_key=self.key,
+                    label="Average Buy",
+                    score=result.score,
+                    max_score=self.MAX_SCORE,
+                    reason=result.reason,
+                )
+            ],
+        )
 
     @classmethod
     def calculate(cls, average_price: float, current_price: float) -> AverageBuyResult:

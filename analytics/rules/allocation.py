@@ -1,5 +1,8 @@
 from dataclasses import dataclass
 
+from analytics.portfolio_context import PortfolioContext
+from analytics.rules.base import InvestmentRule, RuleContribution, RuleResult
+
 
 @dataclass(slots=True)
 class AllocationResult:
@@ -7,9 +10,29 @@ class AllocationResult:
     reason: str
 
 
-class AllocationRule:
+class AllocationRule(InvestmentRule):
+    """Score a holding against the existing target allocation bands."""
 
     MAX_SCORE = 20
+    key = "allocation"
+
+    def evaluate(self, context: PortfolioContext) -> RuleResult:
+        """Adapt the existing allocation calculation to the rule interface."""
+        result = self.calculate(context.allocation_percent)
+        return RuleResult(
+            score=result.score,
+            reasons=[result.reason],
+            max_score=self.MAX_SCORE,
+            contributions=[
+                RuleContribution(
+                    rule_key=self.key,
+                    label="Allocation",
+                    score=result.score,
+                    max_score=self.MAX_SCORE,
+                    reason=result.reason,
+                )
+            ],
+        )
 
     @classmethod
     def calculate(

@@ -1,74 +1,131 @@
-from database.sqlite import DatabaseManager
-from portfolio.loader import PortfolioLoader
-from analytics.portfolio_engine import PortfolioEngine
-from gsheets.sheets import GoogleSheetsService
-from utils.logger import setup_logger
+"""Application entry point for the portfolio intelligence batch run."""
+
+from __future__ import annotations
+
+import argparse
 import logging
+
 import pandas as pd
+
+from analytics.portfolio_health import PortfolioHealthEngine
+from analytics.portfolio_engine import PortfolioEngine
+from analytics.portfolio_result import PortfolioResult
+from analytics.recommendation import Recommendation
+from database.sqlite import DatabaseManager
+from gsheets.sheets import GoogleSheetsService
+from market.models import MarketData
+from portfolio.loader import PortfolioLoader
+from utils.logger import setup_logger
+
 
 LOGGER = logging.getLogger(__name__)
 
+RecommendationPair = tuple[MarketData, Recommendation]
 
-def main():
-    setup_logger()
-    loader = PortfolioLoader()
-    database = DatabaseManager()
-    database.initialize()
 
-    results = PortfolioEngine().run()
-    recommendations = []
+def persist_market_snapshots(
+    results: list[PortfolioResult],
+    database: DatabaseManager,
+) -> list[RecommendationPair]:
+    """Persist each result and return its market/recommendation pair."""
+    recommendations: list[RecommendationPair] = []
+
     for result in results:
-        market_data = result.market
-        recommendation = result.recommendation
-        database.save_market_snapshot(
-            market_data,
-            recommendation,
-        )
-        recommendations.append((market_data, recommendation))
+        database.save_market_snapshot(result.market, result.recommendation)
+        recommendations.append((result.market, result.recommendation))
 
-    recommendations.sort(
-        key=lambda x: x[1].buy_score,
-        reverse=True,
-    )
+    return recommendations
 
-    dashboard_rows = []
 
-    for market_data, recommendation in recommendations:
+def build_dashboard_dataframe(
+    recommendations: list[RecommendationPair],
+) -> pd.DataFrame:
+    """Convert ranked recommendations to the existing dashboard schema."""
+    dashboard_rows = [
+        {
+            "Symbol": market_data.symbol,
+            "Live": market_data.live_price,
+            "Prev Close": market_data.previous_close,
+            "Day %": market_data.day_change_percent,
+            "T5 Close": market_data.t5_close,
+            "T5 %": market_data.t5_percent,
+            "T7 Close": market_data.t7_close,
+            "T7 %": market_data.t7_percent,
+            "Score": recommendation.buy_score,
+            "Action": recommendation.action,
+            "Amount": recommendation.suggested_amount,
+        }
+        for market_data, recommendation in recommendations
+    ]
+    return pd.DataFrame(dashboard_rows)
 
-        dashboard_rows.append(
+
+def build_decision_trace_dataframe(
+    recommendations: list[RecommendationPair],
+) -> pd.DataFrame:
+    """Convert each recommendation trace to one Sheets-ready summary row."""
+    columns = [
+        "Symbol",
+        "Final Score",
+        "Action",
+        "Suggested Amount",
+        "Average Buy Score",
+        "Allocation Score",
+        "Day Momentum",
+        "5D Momentum",
+        "7D Momentum",
+        "52 Week Score",
+        "50 DMA Score",
+        "200 DMA Score",
+        "Combined Reasons",
+    ]
+    trace_rows = []
+    for _, recommendation in recommendations:
+        scores_by_label = {
+            contribution.label: contribution.score
+            for contribution in recommendation.rule_breakdown
+        }
+        trace_rows.append(
             {
-                "Symbol": market_data.symbol,
-                "Live": market_data.live_price,
-                "Prev Close": market_data.previous_close,
-                "Day %": market_data.day_change_percent,
-                "T5 Close": market_data.t5_close,
-                "T5 %": market_data.t5_percent,
-                "T7 Close": market_data.t7_close,
-                "T7 %": market_data.t7_percent,
-                "Score": recommendation.buy_score,
-                "Action": recommendation.action,
-                "Amount": recommendation.suggested_amount,
+            "Symbol": recommendation.symbol,
+            "Final Score": recommendation.buy_score,
+            "Action": recommendation.action,
+            "Suggested Amount": recommendation.suggested_amount,
+            "Average Buy Score": scores_by_label.get("Average Buy", 0),
+            "Allocation Score": scores_by_label.get("Allocation", 0),
+            "Day Momentum": scores_by_label.get("Momentum (Day)", 0),
+            "5D Momentum": scores_by_label.get("Momentum (5D)", 0),
+            "7D Momentum": scores_by_label.get("Momentum (7D)", 0),
+            "52 Week Score": scores_by_label.get("52 Week", 0),
+            "50 DMA Score": scores_by_label.get("Moving Average (50 DMA)", 0),
+            "200 DMA Score": scores_by_label.get("Moving Average (200 DMA)", 0),
+            "Combined Reasons": "; ".join(recommendation.reasons),
             }
         )
+    return pd.DataFrame(trace_rows, columns=columns)
 
-    dashboard_df = pd.DataFrame(dashboard_rows)
 
-    top_df = dashboard_df.head(10)
-    holdings = loader.load_holdings()
-
+def publish_reports(
+    dashboard: pd.DataFrame,
+    holdings: pd.DataFrame,
+    decision_trace: pd.DataFrame,
+) -> None:
+    """Publish existing reports and the per-rule decision trace worksheet."""
     try:
         google = GoogleSheetsService()
-        google.dashboard(dashboard_df)
-        google.opportunities(top_df)
-        google.history(dashboard_df)
+        google.dashboard(dashboard)
+        google.opportunities(dashboard.head(10))
+        google.history(dashboard)
         google.portfolio(holdings)
+        google.decision_trace(decision_trace)
     except Exception:
         LOGGER.exception("Google Sheets publishing failed; results remain available locally.")
 
+
+def print_recommendations(recommendations: list[RecommendationPair]) -> None:
+    """Render the existing fixed-width console recommendation table."""
     print()
-
     print("=" * 220)
-
     print(
         f"{'Rank':<5}"
         f"{'Symbol':<15}"
@@ -80,32 +137,21 @@ def main():
         f"{'Action':>15}"
         f"{'Amount':>12}"
     )
-
     print("=" * 220)
 
-    for index, (market_data, recommendation) in enumerate(
-        recommendations,
-        start=1,
-    ):
-
+    for index, (market_data, recommendation) in enumerate(recommendations, start=1):
         print(
             f"{index:<5}"
             f"{market_data.symbol:<15}"
             f"{market_data.live_price:>10.2f}"
-
             f"{market_data.previous_close:>10.2f}"
             f" ({market_data.day_change_percent:+6.2f}%)"
-
             f"{market_data.t5_close:>10.2f}"
             f" ({market_data.t5_percent:+6.2f}%)"
-
             f"{market_data.t7_close:>10.2f}"
             f" ({market_data.t7_percent:+6.2f}%)"
-
             f"{recommendation.buy_score:>10}"
-
             f"{recommendation.action:>15}"
-
             f"{recommendation.suggested_amount:>12}"
         )
 
@@ -113,5 +159,55 @@ def main():
     print("=" * 220)
 
 
+def print_decision_trace(recommendations: list[RecommendationPair]) -> None:
+    """Render the optional per-rule scoring breakdown for each recommendation."""
+    print()
+    print("DECISION TRACE")
+    print("=" * 100)
+
+    for _, recommendation in recommendations:
+        print(
+            f"{recommendation.symbol} | "
+            f"Score: {recommendation.buy_score} | "
+            f"Action: {recommendation.action} | "
+            f"Amount: {recommendation.suggested_amount}"
+        )
+        for contribution in recommendation.rule_breakdown:
+            print(
+                f"  {contribution.label:<26} "
+                f"{contribution.score:>3}/{contribution.max_score:<3} "
+                f"{contribution.reason}"
+            )
+
+
+def main(detailed: bool = False) -> None:
+    """Run portfolio analysis and publish its existing outputs."""
+    setup_logger()
+    loader = PortfolioLoader()
+    database = DatabaseManager()
+    database.initialize()
+
+    recommendations = persist_market_snapshots(PortfolioEngine().run(), database)
+    recommendations.sort(key=lambda item: item[1].buy_score, reverse=True)
+
+    dashboard = build_dashboard_dataframe(recommendations)
+    decision_trace = build_decision_trace_dataframe(recommendations)
+    publish_reports(dashboard, loader.load_holdings(), decision_trace)
+    print_recommendations(recommendations)
+    if detailed:
+        print_decision_trace(recommendations)
+
+
+def parse_arguments() -> argparse.Namespace:
+    """Parse the optional console decision-trace switch."""
+    parser = argparse.ArgumentParser(description="Generate portfolio recommendations.")
+    parser.add_argument(
+        "--detailed",
+        action="store_true",
+        help="Print the rule-by-rule decision trace after the recommendation table.",
+    )
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
-    main()
+    main(detailed=parse_arguments().detailed)

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from analytics.scoring import ScoringEngine
 from analytics.portfolio_context import PortfolioContext
+from analytics.rules.base import RuleContribution
 
 
 @dataclass(slots=True)
@@ -13,15 +14,18 @@ class Recommendation:
     action: str
     suggested_amount: int
     reasons: list[str]
+    rule_breakdown: list[RuleContribution] = field(default_factory=list)
 
 
 class RecommendationEngine:
+    """Map a V2 portfolio context score to the existing recommendation policy."""
 
-    def generate(self, portfolio: PortfolioContext) -> Recommendation:
+    def generate(self, context: PortfolioContext) -> Recommendation:
+        """Generate an action, amount, and reasons for a scoring context."""
 
-        score, reasons = ScoringEngine.calculate(
-            portfolio,
-        )
+        score_result = ScoringEngine.evaluate(context)
+        score = score_result.total_score
+        reasons = score_result.reasons
 
         if score >= 90:
 
@@ -56,7 +60,7 @@ class RecommendationEngine:
 
         return Recommendation(
 
-            symbol=portfolio.symbol,
+            symbol=context.symbol,
 
             buy_score=score,
 
@@ -65,4 +69,6 @@ class RecommendationEngine:
             suggested_amount=amount,
 
             reasons=reasons,
+
+            rule_breakdown=score_result.rule_breakdown,
         )

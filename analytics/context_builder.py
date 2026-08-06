@@ -4,6 +4,7 @@ from portfolio.loader import Holding
 
 
 class ContextBuilder:
+    """Build the immutable V2 scoring context from holding and market data."""
 
     @staticmethod
     def build(
@@ -11,6 +12,7 @@ class ContextBuilder:
         market: MarketData,
         total_portfolio_value: float,
     ) -> PortfolioContext:
+        """Calculate portfolio-derived values without mutating either input."""
 
         current_value = (
             holding.quantity

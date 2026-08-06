@@ -5,6 +5,7 @@ Google Sheets Service.
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 import pandas as pd
 
@@ -15,9 +16,16 @@ from config.settings import settings
 LOGGER = logging.getLogger(__name__)
 
 
-class GoogleSheetsService:
+def dataframe_values(dataframe: pd.DataFrame) -> list[list[Any]]:
+    """Return worksheet-safe values, representing missing data as blank cells."""
+    sanitized = dataframe.astype(object).where(pd.notna(dataframe), None)
+    return [dataframe.columns.tolist(), *sanitized.values.tolist()]
 
-    def __init__(self):
+
+class GoogleSheetsService:
+    """Write existing report DataFrames to the configured Google spreadsheet."""
+
+    def __init__(self) -> None:
 
         self.client = get_google_client()
 
@@ -25,7 +33,8 @@ class GoogleSheetsService:
             settings.GOOGLE_SHEET_ID
         )
 
-    def worksheet(self, name: str):
+    def worksheet(self, name: str) -> Any:
+        """Return an existing worksheet or create it using existing dimensions."""
 
         try:
             return self.spreadsheet.worksheet(name)
@@ -43,7 +52,8 @@ class GoogleSheetsService:
                 cols=30,
             )
 
-    def clear(self, name: str):
+    def clear(self, name: str) -> None:
+        """Clear an existing or newly created worksheet."""
 
         self.worksheet(name).clear()
 
@@ -51,19 +61,14 @@ class GoogleSheetsService:
         self,
         name: str,
         dataframe: pd.DataFrame,
-    ):
+    ) -> None:
+        """Replace a worksheet's values and apply the existing formatting."""
 
         worksheet = self.worksheet(name)
 
         worksheet.clear()
 
-        values = [
-            dataframe.columns.tolist()
-        ]
-
-        values.extend(
-            dataframe.values.tolist()
-        )
+        values = dataframe_values(dataframe)
 
         worksheet.update(
             values=values,
@@ -74,8 +79,9 @@ class GoogleSheetsService:
 
     def format_sheet(
         self,
-        worksheet,
-    ):
+        worksheet: Any,
+    ) -> None:
+        """Apply the existing header and frozen-row formatting."""
 
         worksheet.format(
             "A1:Z1",
@@ -112,7 +118,7 @@ class GoogleSheetsService:
     def dashboard(
         self,
         dataframe: pd.DataFrame,
-    ):
+    ) -> None:
 
         self.write_dataframe(
             Worksheets.DASHBOARD,
@@ -122,7 +128,7 @@ class GoogleSheetsService:
     def opportunities(
         self,
         dataframe: pd.DataFrame,
-    ):
+    ) -> None:
 
         self.write_dataframe(
             "Top Opportunities",
@@ -132,7 +138,7 @@ class GoogleSheetsService:
     def history(
         self,
         dataframe: pd.DataFrame,
-    ):
+    ) -> None:
 
         self.write_dataframe(
             "Market History",
@@ -142,9 +148,19 @@ class GoogleSheetsService:
     def portfolio(
         self,
         dataframe: pd.DataFrame,
-    ):
+    ) -> None:
 
         self.write_dataframe(
             "Portfolio",
+            dataframe,
+        )
+
+    def decision_trace(
+        self,
+        dataframe: pd.DataFrame,
+    ) -> None:
+        """Write the per-rule recommendation decision trace."""
+        self.write_dataframe(
+            "Decision Trace",
             dataframe,
         )

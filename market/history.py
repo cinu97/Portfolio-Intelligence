@@ -2,14 +2,17 @@ from __future__ import annotations
 
 import logging
 
+import pandas as pd
 import yfinance as yf
 
 LOGGER = logging.getLogger(__name__)
 
 
 class HistoryService:
+    """Retrieve price history from the configured Yahoo Finance market suffix."""
 
-    def get_history(self, symbol: str):
+    def get_history(self, symbol: str) -> pd.DataFrame | None:
+        """Return the existing history window, or ``None`` when unavailable."""
 
         try:
 

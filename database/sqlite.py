@@ -8,8 +8,13 @@ import logging
 import sqlite3
 from contextlib import closing
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from config.settings import settings
+
+if TYPE_CHECKING:
+    from analytics.recommendation import Recommendation
+    from market.models import MarketData
 
 LOGGER = logging.getLogger(__name__)
 
@@ -95,9 +100,10 @@ class DatabaseManager:
         LOGGER.info("SQLite database initialized successfully.")
     def save_market_snapshot(
         self,
-        market_data,
-        recommendation,
+        market_data: MarketData,
+        recommendation: Recommendation,
     ) -> None:
+        """Store the existing daily price and recommendation snapshot rows."""
 
         with closing(self.connect()) as conn:
 

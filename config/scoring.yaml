@@ -13,6 +13,21 @@ weights:
   volatility: 5
 
 
+# Multipliers consumed by the plugin-based V2 rule registry.
+# Keeping every value at 1.0 preserves the existing recommendation behaviour.
+rule_weights:
+
+  average_buy: 1.0
+
+  allocation: 1.0
+
+  momentum: 1.0
+
+  fifty_two_week: 1.0
+
+  moving_average: 1.0
+
+
 allocation:
 
   target_percent: 5

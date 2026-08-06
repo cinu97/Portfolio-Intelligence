@@ -3,6 +3,7 @@ from dataclasses import dataclass
 
 @dataclass(slots=True)
 class PortfolioContext:
+    """All normalized portfolio and market inputs required by V2 rules."""
 
     # Portfolio
     symbol: str

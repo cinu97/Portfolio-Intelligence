@@ -6,8 +6,9 @@ from analytics.portfolio_result import PortfolioResult
 
 
 class PortfolioEngine:
+    """Coordinate the V2 portfolio-context and recommendation workflow."""
 
-    def __init__(self):
+    def __init__(self) -> None:
 
         self.loader = PortfolioLoader()
 

@@ -1,15 +1,18 @@
 from __future__ import annotations
-from market.technicals import TechnicalService
+
 import logging
 
 from market.history import HistoryService
 from market.models import MarketData
+from market.technicals import TechnicalService
 
 LOGGER = logging.getLogger(__name__)
 
 
 class MarketDataService:
-    def __init__(self):
+    """Build market snapshots from provider history."""
+
+    def __init__(self) -> None:
         self.history = HistoryService()
 
     @staticmethod
@@ -19,6 +22,7 @@ class MarketDataService:
         return round(((current - reference) / reference) * 100, 2)
 
     def fetch(self, symbols: list[str]) -> list[MarketData]:
+        """Fetch and transform market data for the supplied symbols."""
 
         results: list[MarketData] = []
 

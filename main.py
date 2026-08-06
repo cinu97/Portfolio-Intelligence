@@ -18,6 +18,7 @@ from portfolio.loader import PortfolioLoader
 from utils.logger import setup_logger
 
 
+
 LOGGER = logging.getLogger(__name__)
 
 RecommendationPair = tuple[MarketData, Recommendation]
@@ -109,6 +110,8 @@ def publish_reports(
     dashboard: pd.DataFrame,
     holdings: pd.DataFrame,
     decision_trace: pd.DataFrame,
+    investment_plan: pd.DataFrame,
+
 ) -> None:
     """Publish existing reports and the per-rule decision trace worksheet."""
     try:
@@ -118,6 +121,7 @@ def publish_reports(
         google.history(dashboard)
         google.portfolio(holdings)
         google.decision_trace(decision_trace)
+        google.investment_plan(investment_plan)
     except Exception:
         LOGGER.exception("Google Sheets publishing failed; results remain available locally.")
 
@@ -190,14 +194,51 @@ def main(detailed: bool = False) -> None:
     recommendations = persist_market_snapshots(PortfolioEngine().run(), database)
     recommendations.sort(key=lambda item: item[1].buy_score, reverse=True)
 
+    from analytics.investment_planner import InvestmentPlanner
+    from config.settings import CONFIG
+
+    planner_config = CONFIG.get("investment_planner", {})
+
+    investment_plan = InvestmentPlanner.create_plan(
+        recommendations=recommendations,
+        available_cash=planner_config.get("available_cash", 20000),
+    )
+    investment_plan_df = build_investment_plan_dataframe(
+    investment_plan
+    )
     dashboard = build_dashboard_dataframe(recommendations)
     decision_trace = build_decision_trace_dataframe(recommendations)
-    publish_reports(dashboard, loader.load_holdings(), decision_trace)
+    publish_reports(
+        dashboard,
+        loader.load_holdings(),
+        decision_trace,
+        investment_plan_df,
+    )
     print_recommendations(recommendations)
+    print_investment_plan(investment_plan)
     if detailed:
         print_decision_trace(recommendations)
 
+def print_investment_plan(plan):
+    print()
+    print("=" * 60)
+    print("Investment Plan")
+    print("=" * 60)
 
+    total = 0
+
+    for item in plan:
+        print(
+            f"{item.symbol:<15}"
+            f"₹{item.amount:<8}"
+            f"Score: {item.score:<3}"
+        )
+        print(f"   Reason: {item.reason}")
+        total += item.amount
+
+    print("-" * 60)
+    print(f"Total Planned Investment : ₹{total}")
+    
 def parse_arguments() -> argparse.Namespace:
     """Parse the optional console decision-trace switch."""
     parser = argparse.ArgumentParser(description="Generate portfolio recommendations.")
@@ -207,6 +248,23 @@ def parse_arguments() -> argparse.Namespace:
         help="Print the rule-by-rule decision trace after the recommendation table.",
     )
     return parser.parse_args()
+
+def build_investment_plan_dataframe(plan) -> pd.DataFrame:
+
+    rows = []
+
+    for item in plan:
+
+        rows.append(
+            {
+                "Symbol": item.symbol,
+                "Suggested Amount": item.amount,
+                "Score": item.score,
+                "Reason": item.reason,
+            }
+        )
+
+    return pd.DataFrame(rows)
 
 
 if __name__ == "__main__":

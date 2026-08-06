@@ -124,7 +124,7 @@ class GoogleSheetsService:
             Worksheets.DASHBOARD,
             dataframe,
         )
-        
+
     def opportunities(
         self,
         dataframe: pd.DataFrame,
@@ -144,7 +144,7 @@ class GoogleSheetsService:
             "Market History",
             dataframe,
         )
-        
+
     def portfolio(
         self,
         dataframe: pd.DataFrame,
@@ -160,7 +160,19 @@ class GoogleSheetsService:
         dataframe: pd.DataFrame,
     ) -> None:
         """Write the per-rule recommendation decision trace."""
+
         self.write_dataframe(
             "Decision Trace",
+            dataframe,
+        )
+
+    def investment_plan(
+        self,
+        dataframe: pd.DataFrame,
+    ) -> None:
+        """Write the investment plan worksheet."""
+
+        self.write_dataframe(
+            "Investment Plan",
             dataframe,
         )

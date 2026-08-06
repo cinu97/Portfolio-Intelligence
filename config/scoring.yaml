@@ -55,3 +55,8 @@ score:
   accumulate: 60
 
   watch: 40
+  
+investment_planner:
+  available_cash: 10000
+  reserve_cash_percent: 10
+  max_positions: 3

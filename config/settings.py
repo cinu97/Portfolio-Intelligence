@@ -1,46 +1,42 @@
-"""
-Application settings.
-
-Loads configuration from the .env file and exposes strongly typed settings.
-"""
-
-from __future__ import annotations
-
-from dataclasses import dataclass
 from pathlib import Path
-
-from dotenv import load_dotenv
-import os
-
-# Project root
-BASE_DIR = Path(__file__).resolve().parent.parent
-
-# Load .env
-load_dotenv(BASE_DIR / ".env")
+import yaml
 
 
-@dataclass(frozen=True)
 class Settings:
-    """Application configuration."""
 
-    APP_NAME: str = "Portfolio Intelligence"
-    APP_VERSION: str = "1.0.0"
+    def __init__(self):
 
-    DATA_DIR: Path = BASE_DIR / "data"
-    DATABASE_PATH: Path = BASE_DIR / "data" / "portfolio.db"
+        self.PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-    GOOGLE_SHEET_ID: str = os.getenv("GOOGLE_SHEET_ID", "")
+        self.CONFIG_DIR = self.PROJECT_ROOT / "config"
 
-    GOOGLE_CREDENTIALS: Path = Path(
-        os.getenv(
-            "GOOGLE_CREDENTIALS",
-            str(BASE_DIR / "config" / "credentials.json"),
+        self.DATA_DIR = self.PROJECT_ROOT / "data"
+
+        self.DATABASE_PATH = self.DATA_DIR / "portfolio.db"
+
+        self.GOOGLE_CREDENTIALS = (
+            self.CONFIG_DIR / "credentials.json"
         )
-    )
 
-    LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
-
-    WATCHLIST_FILE: Path = BASE_DIR / "data" / "watchlist.csv"
+        self.GOOGLE_SHEET_ID = "1adR1Ku_FNIoLsD0PNBQfyk0h-yo3wRpX-yBr7kDXcB8"
+        self.LOG_LEVEL = "INFO"
 
 
 settings = Settings()
+
+
+SCORING_FILE = settings.CONFIG_DIR / "scoring.yaml"
+
+if SCORING_FILE.exists():
+
+    with open(
+        SCORING_FILE,
+        "r",
+        encoding="utf-8",
+    ) as f:
+
+        CONFIG = yaml.safe_load(f)
+
+else:
+
+    CONFIG = {}

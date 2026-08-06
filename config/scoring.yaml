@@ -1,0 +1,42 @@
+weights:
+
+  average_buy: 30
+
+  allocation: 20
+
+  momentum: 10
+
+  fifty_two_week: 20
+
+  moving_average: 15
+
+  volatility: 5
+
+
+allocation:
+
+  target_percent: 5
+
+
+investment:
+
+  strong_buy: 5000
+
+  buy: 3000
+
+  accumulate: 2000
+
+  watch: 1000
+
+  hold: 0
+
+
+score:
+
+  strong_buy: 90
+
+  buy: 75
+
+  accumulate: 60
+
+  watch: 40

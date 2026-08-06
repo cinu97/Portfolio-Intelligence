@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import logging
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 
 from config.settings import settings
@@ -27,7 +28,7 @@ class DatabaseManager:
     def initialize(self) -> None:
         """Create all required database tables."""
 
-        with self.connect() as conn:
+        with closing(self.connect()) as conn:
             cursor = conn.cursor()
 
             cursor.execute("""
@@ -98,7 +99,7 @@ class DatabaseManager:
         recommendation,
     ) -> None:
 
-        with self.connect() as conn:
+        with closing(self.connect()) as conn:
 
             cursor = conn.cursor()
 

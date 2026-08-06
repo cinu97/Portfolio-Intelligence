@@ -1,5 +1,5 @@
 from __future__ import annotations
-
+from market.technicals import TechnicalService
 import logging
 
 from market.history import HistoryService
@@ -30,6 +30,7 @@ class MarketDataService:
                 LOGGER.warning("No history found for %s", symbol)
                 continue
 
+            technical = TechnicalService.calculate(df)
             df = df.tail(8)
 
             if len(df) < 8:
@@ -49,7 +50,6 @@ class MarketDataService:
             t3 = closes[-4]
             t5 = closes[-6]
             t7 = closes[-8]
-
             results.append(
                 MarketData(
                     symbol=symbol,
@@ -86,7 +86,15 @@ class MarketDataService:
                         live,
                         t7,
                     ),
+                    week52_high=technical["week52_high"],
 
+                    week52_low=technical["week52_low"],
+
+                    dma50=technical["dma50"],
+
+                    dma200=technical["dma200"],
+
+                    range_percent=technical["range_percent"],
                     buy_score=0,
 
                     recommendation="",

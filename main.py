@@ -1,52 +1,36 @@
 from database.sqlite import DatabaseManager
 from portfolio.loader import PortfolioLoader
-from market.fetch_prices import MarketDataService
-from analytics.recommendation import RecommendationEngine
+from analytics.portfolio_engine import PortfolioEngine
 from gsheets.sheets import GoogleSheetsService
+from utils.logger import setup_logger
+import logging
 import pandas as pd
 
-print("=== MAIN STARTED ===")
+LOGGER = logging.getLogger(__name__)
+
+
 def main():
-
+    setup_logger()
     loader = PortfolioLoader()
-
-    symbols = loader.get_symbols()
-
-    market = MarketDataService()
-
-    prices = market.fetch(symbols)
-
-    engine = RecommendationEngine()
-
     database = DatabaseManager()
-
     database.initialize()
-    
-    google = GoogleSheetsService()
 
+    results = PortfolioEngine().run()
     recommendations = []
-
-    for price in prices:
-
-        recommendation = engine.generate(price)
-
+    for result in results:
+        market_data = result.market
+        recommendation = result.recommendation
         database.save_market_snapshot(
-            price,
+            market_data,
             recommendation,
         )
-
-        recommendations.append(
-            (
-                price,
-                recommendation,
-            )
-        )
+        recommendations.append((market_data, recommendation))
 
     recommendations.sort(
         key=lambda x: x[1].buy_score,
         reverse=True,
     )
-    
+
     dashboard_rows = []
 
     for market_data, recommendation in recommendations:
@@ -69,17 +53,17 @@ def main():
 
     dashboard_df = pd.DataFrame(dashboard_rows)
 
-    google.dashboard(dashboard_df)
-    
     top_df = dashboard_df.head(10)
-
-    google.opportunities(top_df)
-    
-    google.history(dashboard_df)
-    
     holdings = loader.load_holdings()
 
-    google.portfolio(holdings)
+    try:
+        google = GoogleSheetsService()
+        google.dashboard(dashboard_df)
+        google.opportunities(top_df)
+        google.history(dashboard_df)
+        google.portfolio(holdings)
+    except Exception:
+        LOGGER.exception("Google Sheets publishing failed; results remain available locally.")
 
     print()
 

@@ -41,35 +41,15 @@ def persist_market_snapshots(
 def build_dashboard_dataframe(
     recommendations: list[RecommendationPair],
 ) -> pd.DataFrame:
-    """Convert ranked recommendations to the existing dashboard schema plus 52W metrics."""
+    """Build the Dashboard DataFrame with existing and additional technical metrics."""
 
     dashboard_rows = []
 
     for market_data, recommendation in recommendations:
 
-        week52_low = (
-            market_data.week52_low
-            if market_data.week52_low > 0
-            else None
-        )
-
-        week52_high = (
-            market_data.week52_high
-            if market_data.week52_high > 0
-            else None
-        )
-
-        percent_from_52w_high = None
-
-        if week52_high is not None:
-            percent_from_52w_high = round(
-                (
-                    (market_data.live_price - week52_high)
-                    / week52_high
-                ) * 100,
-                2,
-            )
-            
+        # -----------------------------
+        # 52-week metrics
+        # -----------------------------
         week52_low = (
             market_data.week52_low
             if market_data.week52_low > 0
@@ -103,6 +83,42 @@ def build_dashboard_dataframe(
                 2,
             )
 
+        # -----------------------------
+        # Moving-average metrics
+        # -----------------------------
+        dma50 = (
+            market_data.dma50
+            if market_data.dma50 is not None and market_data.dma50 > 0
+            else None
+        )
+
+        dma200 = (
+            market_data.dma200
+            if market_data.dma200 is not None and market_data.dma200 > 0
+            else None
+        )
+
+        percent_from_50dma = None
+        percent_from_200dma = None
+
+        if dma50 is not None:
+            percent_from_50dma = round(
+                (
+                    (market_data.live_price - dma50)
+                    / dma50
+                ) * 100,
+                2,
+            )
+
+        if dma200 is not None:
+            percent_from_200dma = round(
+                (
+                    (market_data.live_price - dma200)
+                    / dma200
+                ) * 100,
+                2,
+            )
+
         dashboard_rows.append(
             {
                 # Existing columns — unchanged
@@ -114,19 +130,21 @@ def build_dashboard_dataframe(
                 "T5 %": market_data.t5_percent,
                 "T7 Close": market_data.t7_close,
                 "T7 %": market_data.t7_percent,
-                
-                                # New columns
-                "52W Low": week52_low,
-                "52W High": week52_high,
-                "% From 52W Low": percent_from_52w_low,
-                "% From 52W High": percent_from_52w_high,
-                
-                #Old
                 "Score": recommendation.buy_score,
                 "Action": recommendation.action,
                 "Amount": recommendation.suggested_amount,
 
+                # Existing 52-week columns
+                "52W Low": week52_low,
+                "52W High": week52_high,
+                "% From 52W Low": percent_from_52w_low,
+                "% From 52W High": percent_from_52w_high,
 
+                # New DMA columns
+                "50 DMA": dma50,
+                "% From 50 DMA": percent_from_50dma,
+                "200 DMA": dma200,
+                "% From 200 DMA": percent_from_200dma,
             }
         )
 

@@ -11,8 +11,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout Portfolio Intelligence
         uses: actions/checkout@v4
+        with:
+          ref: feature/dashboard-52week
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -25,5 +27,8 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run Portfolio Intelligence
+        env:
+          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+          GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
         run: |
           python main.py

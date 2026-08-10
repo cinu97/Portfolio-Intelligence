@@ -1,4 +1,5 @@
 from pathlib import Path
+import os
 import yaml
 
 
@@ -18,8 +19,15 @@ class Settings:
             self.CONFIG_DIR / "credentials.json"
         )
 
-        self.GOOGLE_SHEET_ID = "1adR1Ku_FNIoLsD0PNBQfyk0h-yo3wRpX-yBr7kDXcB8"
-        self.LOG_LEVEL = "INFO"
+        self.GOOGLE_SHEET_ID = os.getenv(
+            "GOOGLE_SHEET_ID",
+            "1adR1Ku_FNIoLsD0PNBQfyk0h-yo3wRpX-yBr7kDXcB8",
+        )
+
+        self.LOG_LEVEL = os.getenv(
+            "LOG_LEVEL",
+            "INFO",
+        )
 
 
 settings = Settings()

@@ -41,23 +41,95 @@ def persist_market_snapshots(
 def build_dashboard_dataframe(
     recommendations: list[RecommendationPair],
 ) -> pd.DataFrame:
-    """Convert ranked recommendations to the existing dashboard schema."""
-    dashboard_rows = [
-        {
-            "Symbol": market_data.symbol,
-            "Live": market_data.live_price,
-            "Prev Close": market_data.previous_close,
-            "Day %": market_data.day_change_percent,
-            "T5 Close": market_data.t5_close,
-            "T5 %": market_data.t5_percent,
-            "T7 Close": market_data.t7_close,
-            "T7 %": market_data.t7_percent,
-            "Score": recommendation.buy_score,
-            "Action": recommendation.action,
-            "Amount": recommendation.suggested_amount,
-        }
-        for market_data, recommendation in recommendations
-    ]
+    """Convert ranked recommendations to the existing dashboard schema plus 52W metrics."""
+
+    dashboard_rows = []
+
+    for market_data, recommendation in recommendations:
+
+        week52_low = (
+            market_data.week52_low
+            if market_data.week52_low > 0
+            else None
+        )
+
+        week52_high = (
+            market_data.week52_high
+            if market_data.week52_high > 0
+            else None
+        )
+
+        percent_from_52w_high = None
+
+        if week52_high is not None:
+            percent_from_52w_high = round(
+                (
+                    (market_data.live_price - week52_high)
+                    / week52_high
+                ) * 100,
+                2,
+            )
+            
+        week52_low = (
+            market_data.week52_low
+            if market_data.week52_low > 0
+            else None
+        )
+
+        week52_high = (
+            market_data.week52_high
+            if market_data.week52_high > 0
+            else None
+        )
+
+        percent_from_52w_low = None
+        percent_from_52w_high = None
+
+        if week52_low is not None:
+            percent_from_52w_low = round(
+                (
+                    (market_data.live_price - week52_low)
+                    / week52_low
+                ) * 100,
+                2,
+            )
+
+        if week52_high is not None:
+            percent_from_52w_high = round(
+                (
+                    (market_data.live_price - week52_high)
+                    / week52_high
+                ) * 100,
+                2,
+            )
+
+        dashboard_rows.append(
+            {
+                # Existing columns — unchanged
+                "Symbol": market_data.symbol,
+                "Live": market_data.live_price,
+                "Prev Close": market_data.previous_close,
+                "Day %": market_data.day_change_percent,
+                "T5 Close": market_data.t5_close,
+                "T5 %": market_data.t5_percent,
+                "T7 Close": market_data.t7_close,
+                "T7 %": market_data.t7_percent,
+                
+                                # New columns
+                "52W Low": week52_low,
+                "52W High": week52_high,
+                "% From 52W Low": percent_from_52w_low,
+                "% From 52W High": percent_from_52w_high,
+                
+                #Old
+                "Score": recommendation.buy_score,
+                "Action": recommendation.action,
+                "Amount": recommendation.suggested_amount,
+
+
+            }
+        )
+
     return pd.DataFrame(dashboard_rows)
 
 
@@ -241,20 +313,23 @@ def print_investment_plan(plan):
     
 def parse_arguments() -> argparse.Namespace:
     """Parse the optional console decision-trace switch."""
-    parser = argparse.ArgumentParser(description="Generate portfolio recommendations.")
+    parser = argparse.ArgumentParser(
+        description="Generate portfolio recommendations."
+    )
+
     parser.add_argument(
         "--detailed",
         action="store_true",
         help="Print the rule-by-rule decision trace after the recommendation table.",
     )
+
     return parser.parse_args()
 
-def build_investment_plan_dataframe(plan) -> pd.DataFrame:
 
+def build_investment_plan_dataframe(plan) -> pd.DataFrame:
     rows = []
 
     for item in plan:
-
         rows.append(
             {
                 "Symbol": item.symbol,

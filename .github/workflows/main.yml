@@ -25,5 +25,8 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run Portfolio Intelligence
+        env:
+          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+          GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
         run: |
           python main.py

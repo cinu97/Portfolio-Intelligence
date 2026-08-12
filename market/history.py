@@ -16,8 +16,11 @@ class HistoryService:
 
         try:
 
-            ticker = yf.Ticker(f"{symbol}.NS")
-
+            # Yahoo Finance uses the base ticker for REIT/InvIT symbols.
+            # Portfolio holdings may contain the "-RR" suffix.
+            yahoo_symbol = symbol.removesuffix("-RR")
+            ticker = yf.Ticker(f"{yahoo_symbol}.NS")
+            
             df = ticker.history(period="15d")
 
             if df.empty:

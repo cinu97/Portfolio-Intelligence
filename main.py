@@ -122,29 +122,29 @@ def build_dashboard_dataframe(
         dashboard_rows.append(
             {
                 # Existing columns — unchanged
-                "Symbol": market_data.symbol,
-                "Live": market_data.live_price,
-                "Prev Close": market_data.previous_close,
-                "Day %": market_data.day_change_percent,
-                "T5 Close": market_data.t5_close,
-                "T5 %": market_data.t5_percent,
-                "T7 Close": market_data.t7_close,
-                "T7 %": market_data.t7_percent,
-                "Score": recommendation.buy_score,
                 "Action": recommendation.action,
-                "Amount": recommendation.suggested_amount,
+                "Amount": recommendation.suggested_amount,"Symbol": market_data.symbol,
+                "Live": market_data.live_price,
+                "Day %": market_data.day_change_percent,
+                "T5 %": market_data.t5_percent,
+                "T7 %": market_data.t7_percent,
+                "% From 50 DMA": percent_from_50dma,
+                "% From 200 DMA": percent_from_200dma,
+                "% 52W Low": percent_from_52w_low,
+                "% 52W High": percent_from_52w_high,
 
+                "Prev": market_data.previous_close,            
+                "T5 Close": market_data.t5_close,
+                "T7 Close": market_data.t7_close,
                 # Existing 52-week columns
                 "52W Low": week52_low,
                 "52W High": week52_high,
-                "% From 52W Low": percent_from_52w_low,
-                "% From 52W High": percent_from_52w_high,
-
+                
                 # New DMA columns
-                "50 DMA": dma50,
-                "% From 50 DMA": percent_from_50dma,
+                "50 DMA": dma50,                
                 "200 DMA": dma200,
-                "% From 200 DMA": percent_from_200dma,
+                "Score": recommendation.buy_score,
+
             }
         )
 

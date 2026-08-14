@@ -21,7 +21,7 @@ class HistoryService:
             yahoo_symbol = symbol.removesuffix("-RR")
             ticker = yf.Ticker(f"{yahoo_symbol}.NS")
             
-            df = ticker.history(period="15d")
+            df = ticker.history(period="1y")
 
             if df.empty:
                 return None

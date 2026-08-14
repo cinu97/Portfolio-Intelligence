@@ -5,6 +5,7 @@ import logging
 from market.history import HistoryService
 from market.models import MarketData
 from market.technicals import TechnicalService
+from market.inav import INAVService
 
 LOGGER = logging.getLogger(__name__)
 
@@ -14,15 +15,23 @@ class MarketDataService:
 
     def __init__(self) -> None:
         self.history = HistoryService()
+        self.inav_service = INAVService()
 
     @staticmethod
     def _pct(current: float, reference: float) -> float:
         if reference == 0:
             return 0.0
-        return round(((current - reference) / reference) * 100, 2)
 
-    def fetch(self, symbols: list[str]) -> list[MarketData]:
-        """Fetch and transform market data for the supplied symbols."""
+        return round(
+            ((current - reference) / reference) * 100,
+            2,
+        )
+
+    def fetch(
+        self,
+        symbols: list[str],
+    ) -> list[MarketData]:
+        """Fetch and transform market data for supplied symbols."""
 
         results: list[MarketData] = []
 
@@ -31,10 +40,14 @@ class MarketDataService:
             df = self.history.get_history(symbol)
 
             if df is None or df.empty:
-                LOGGER.warning("No history found for %s", symbol)
+                LOGGER.warning(
+                    "No history found for %s",
+                    symbol,
+                )
                 continue
 
             technical = TechnicalService.calculate(df)
+
             df = df.tail(8)
 
             if len(df) < 8:
@@ -45,7 +58,10 @@ class MarketDataService:
                 )
                 continue
 
-            closes = [round(float(x), 2) for x in df["Close"].tolist()]
+            closes = [
+                round(float(x), 2)
+                for x in df["Close"].tolist()
+            ]
 
             live = closes[-1]
             previous = closes[-2]
@@ -54,6 +70,24 @@ class MarketDataService:
             t3 = closes[-4]
             t5 = closes[-6]
             t7 = closes[-8]
+
+            # --------------------------------------------------
+            # iNAV
+            # --------------------------------------------------
+            #
+            # Only ETF symbols should eventually use iNAV.
+            # For now the INAVService itself determines whether
+            # usable iNAV data is available.
+            #
+            # We pass the already calculated live price so that
+            # the service does not need to fetch LTP again.
+            # --------------------------------------------------
+
+            inav_data = self.inav_service.fetch(
+                symbol=symbol,
+                ltp=live,
+            )
+
             results.append(
                 MarketData(
                     symbol=symbol,
@@ -68,37 +102,64 @@ class MarketDataService:
                     ),
 
                     t2_close=t2,
+
                     t2_percent=self._pct(
                         live,
                         t2,
                     ),
 
                     t3_close=t3,
+
                     t3_percent=self._pct(
                         live,
                         t3,
                     ),
 
                     t5_close=t5,
+
                     t5_percent=self._pct(
                         live,
                         t5,
                     ),
 
                     t7_close=t7,
+
                     t7_percent=self._pct(
                         live,
                         t7,
                     ),
-                    week52_high=technical["week52_high"],
 
-                    week52_low=technical["week52_low"],
+                    week52_high=technical[
+                        "week52_high"
+                    ],
 
-                    dma50=technical["dma50"],
+                    week52_low=technical[
+                        "week52_low"
+                    ],
 
-                    dma200=technical["dma200"],
+                    dma50=technical[
+                        "dma50"
+                    ],
 
-                    range_percent=technical["range_percent"],
+                    dma200=technical[
+                        "dma200"
+                    ],
+
+                    range_percent=technical[
+                        "range_percent"
+                    ],
+
+                    # iNAV fields
+                    inav=inav_data.inav,
+
+                    inav_premium_discount_pct=(
+                        inav_data.premium_discount_pct
+                    ),
+
+                    inav_signal=(
+                        inav_data.signal
+                    ),
+
                     buy_score=0,
 
                     recommendation="",

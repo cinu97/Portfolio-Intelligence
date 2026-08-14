@@ -23,19 +23,21 @@ class MarketData:
     t7_close: float
     t7_percent: float
 
-    week52_high: float = 0
+    week52_high: float
+    week52_low: float
 
-    week52_low: float = 0
+    dma50: float
+    dma200: float
 
-    dma50: float = 0
+    range_percent: float
 
-    dma200: float = 0
+    buy_score: int
+    recommendation: str
 
-    range_percent: float = 0
-
-    buy_score: int = 0
-    recommendation: str = ""
-
+    # iNAV fields MUST be after all required fields
+    inav: float | None = None
+    inav_premium_discount_pct: float | None = None
+    inav_signal: str = "N/A"
 
 @dataclass(slots=True)
 class AnalyticsResult:

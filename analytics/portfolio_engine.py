@@ -34,7 +34,12 @@ class PortfolioEngine:
                 item,
                 total_portfolio_value,
             )
-            recommendation = self.recommendation.generate(context)
+            recommendation = self.recommendation.generate(
+                context,
+                inav=item.inav,
+                inav_premium_discount_pct=item.inav_premium_discount_pct,
+                inav_signal=item.inav_signal,
+            )
             results.append(
                 PortfolioResult(
                     holding=holding,

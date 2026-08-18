@@ -20,7 +20,13 @@ class Recommendation:
 class RecommendationEngine:
     """Map a V2 portfolio context score to the existing recommendation policy."""
 
-    def generate(self, context: PortfolioContext) -> Recommendation:
+    def generate(
+        self,
+        context: PortfolioContext,
+        inav: float | None = None,
+        inav_premium_discount_pct: float | None = None,
+        inav_signal: str = "N/A",
+    ) -> Recommendation:
         """Generate an action, amount, and reasons for a scoring context."""
 
         score_result = ScoringEngine.evaluate(context)
@@ -57,6 +63,44 @@ class RecommendationEngine:
             reasons.append(
                 "No strong signal"
             )
+
+        # iNAV is an execution filter, not part of the technical score.
+        # Preserve the score and the original recommendation when iNAV
+        # is unavailable or the instrument is not an ETF.
+        if (
+            amount > 0
+            and inav_premium_discount_pct is not None
+            and inav_signal not in {"UNAVAILABLE", "N/A"}
+        ):
+            premium = inav_premium_discount_pct
+
+            if premium > 0.50:
+                action = "WAIT"
+                amount = 0
+                reasons.append(
+                    f"iNAV execution filter: LTP is {premium:.2f}% above iNAV; "
+                    "wait for a better entry."
+                )
+
+            elif premium > 0.25:
+                action = "WAIT"
+                amount = 0
+                reasons.append(
+                    f"iNAV execution filter: LTP is {premium:.2f}% above iNAV; "
+                    "premium is above the 0.25% entry threshold."
+                )
+
+            elif premium <= 0:
+                reasons.append(
+                    f"iNAV execution filter: LTP is {abs(premium):.2f}% "
+                    "below iNAV; favorable entry."
+                )
+
+            else:
+                reasons.append(
+                    f"iNAV execution filter: LTP is {premium:.2f}% "
+                    "above iNAV; within the 0.25% tolerance."
+                )
 
         return Recommendation(
 

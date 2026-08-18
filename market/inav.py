@@ -1,5 +1,6 @@
 from __future__ import annotations
-
+from market.inav_providers.nippon import NipponINAVProvider
+from market.inav_providers.mirae import MiraeINAVProvider
 import logging
 from dataclasses import dataclass
 from typing import Optional
@@ -21,14 +22,10 @@ class INAVData:
 
 class INAVService:
     """
-    Fetch ETF iNAV data from NSE's ETF market-data endpoint.
+    Fetch live ETF iNAV/NAV data from NSE's ETF market-data endpoint.
 
-    iNAV is an execution-quality signal.
+    iNAV is treated as an execution-quality signal.
     It does not modify the technical score.
-
-    NSE's ETF market-data page exposes LTP and NAV/iNAV data,
-    while NSE's market-feed documentation identifies iNAV as
-    a separate instrument/value for ETFs.
     """
 
     ETF_PAGE_URL = (
@@ -44,39 +41,51 @@ class INAVService:
 
         self.session = requests.Session()
 
+        self.headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/151.0.0.0 Safari/537.36"
+            ),
+            "Accept": (
+                "application/json, text/plain, */*"
+            ),
+            "Accept-Language": (
+                "en-US,en;q=0.9"
+            ),
+            "Accept-Encoding": (
+                "gzip, deflate, br"
+            ),
+            "Referer": self.ETF_PAGE_URL,
+            "Connection": "keep-alive",
+        }
+
         self.session.headers.update(
-            {
-                "User-Agent": (
-                    "Mozilla/5.0 "
-                    "(Windows NT 10.0; Win64; x64) "
-                    "AppleWebKit/537.36 "
-                    "(KHTML, like Gecko) "
-                    "Chrome/151.0.0.0 Safari/537.36"
-                ),
-                "Accept": (
-                    "application/json,text/plain,*/*"
-                ),
-                "Accept-Language": (
-                    "en-US,en;q=0.9"
-                ),
-                "Accept-Encoding": (
-                    "gzip, deflate"
-                ),
-                "Connection": "keep-alive",
-                "Referer": (
-                    "https://www.nseindia.com/"
-                ),
-            }
+            self.headers
         )
 
         self._cache: dict[str, dict] = {}
         self._loaded = False
+        self.nippon = NipponINAVProvider()
+        self.mirae = MiraeINAVProvider()
+
+    def _prime_session(self) -> None:
+        """
+        Establish NSE cookies by visiting the ETF page first.
+        """
+
+        response = self.session.get(
+            self.ETF_PAGE_URL,
+            timeout=15,
+        )
+
+        response.raise_for_status()
 
     def _load_etf_data(self) -> bool:
         """
-        Load the complete NSE ETF table once.
+        Download NSE's complete ETF table once and cache it.
 
-        Returns True when data is successfully loaded.
+        NSE's ETF page exposes ETF LTP and NAV data.
         """
 
         if self._loaded:
@@ -84,17 +93,14 @@ class INAVService:
 
         try:
 
-            # Prime NSE session using the actual ETF page.
-            page_response = self.session.get(
-                self.ETF_PAGE_URL,
-                timeout=15,
-            )
+            self._prime_session()
 
-            page_response.raise_for_status()
-
-            # Use cookies established by the ETF page.
             response = self.session.get(
                 self.ETF_API_URL,
+                headers={
+                    **self.headers,
+                    "Referer": self.ETF_PAGE_URL,
+                },
                 timeout=15,
             )
 
@@ -107,7 +113,10 @@ class INAVService:
                 [],
             )
 
-            if not isinstance(rows, list):
+            if not isinstance(
+                rows,
+                list,
+            ):
                 LOGGER.warning(
                     "Unexpected NSE ETF response format."
                 )
@@ -115,7 +124,10 @@ class INAVService:
 
             for row in rows:
 
-                if not isinstance(row, dict):
+                if not isinstance(
+                    row,
+                    dict,
+                ):
                     continue
 
                 symbol = (
@@ -141,7 +153,7 @@ class INAVService:
             self._loaded = True
 
             LOGGER.info(
-                "Loaded iNAV data for %d ETFs from NSE",
+                "Loaded NSE ETF data for %d symbols",
                 len(self._cache),
             )
 
@@ -157,7 +169,7 @@ class INAVService:
         except ValueError as exc:
 
             LOGGER.warning(
-                "Invalid NSE ETF response: %s",
+                "Invalid NSE ETF JSON response: %s",
                 exc,
             )
 
@@ -167,16 +179,14 @@ class INAVService:
     def _number(
         value,
     ) -> Optional[float]:
-        """
-        Convert NSE numeric fields safely.
-
-        NSE may return '-' for unavailable values.
-        """
 
         if value is None:
             return None
 
-        if isinstance(value, str):
+        if isinstance(
+            value,
+            str,
+        ):
 
             value = value.strip()
 
@@ -198,64 +208,73 @@ class INAVService:
         ):
             return None
 
-    @staticmethod
-    def _extract_inav(
+    @classmethod
+    def _find_number(
+        cls,
         row: dict,
+        keys: list[str],
     ) -> Optional[float]:
 
-        # NSE ETF endpoint field names can vary.
-        # Check the known NAV/iNAV representations.
+        for key in keys:
 
-        possible_keys = [
-            "nav",
-            "iNav",
-            "iNAV",
-            "inav",
-            "INAV",
-            "indicativeNav",
-            "indicativeNAV",
-            "indicative_nav",
-        ]
+            if key not in row:
+                continue
 
-        for key in possible_keys:
-
-            value = row.get(key)
-
-            number = INAVService._number(
-                value
-            )
-
-            if number is not None:
-                return number
-
-        return None
-
-    @staticmethod
-    def _extract_ltp(
-        row: dict,
-    ) -> Optional[float]:
-
-        possible_keys = [
-            "ltP",
-            "ltp",
-            "LTP",
-            "lastPrice",
-            "lastprice",
-        ]
-
-        for key in possible_keys:
-
-            number = INAVService._number(
+            value = cls._number(
                 row.get(key)
             )
 
-            if number is not None:
-                return number
+            if value is not None:
+                return value
 
         return None
 
+    @classmethod
+    def _extract_ltp(
+        cls,
+        row: dict,
+    ) -> Optional[float]:
+
+        return cls._find_number(
+            row,
+            [
+                "ltP",
+                "ltp",
+                "LTP",
+                "lastPrice",
+                "lastprice",
+            ],
+        )
+
+    @classmethod
+    def _extract_inav(
+        cls,
+        row: dict,
+    ) -> Optional[float]:
+
+        # NSE ETF endpoint has historically exposed NAV
+        # using different field naming conventions.
+        #
+        # Check all known representations rather than
+        # assuming one exact JSON key.
+
+        return cls._find_number(
+            row,
+            [
+                "nav",
+                "NAV",
+                "iNav",
+                "iNAV",
+                "inav",
+                "INAV",
+                "indicativeNav",
+                "indicativeNAV",
+                "indicative_nav",
+            ],
+        )
+
     @staticmethod
-    def _signal(
+    def _calculate_signal(
         premium_discount_pct: Optional[float],
     ) -> str:
 
@@ -287,9 +306,17 @@ class INAVService:
             .upper()
         )
 
-        # Load the entire ETF table once.
-        if not self._load_etf_data():
+        # ---------------------------------------------------------
+        # AMC-specific iNAV providers
+        # ---------------------------------------------------------
+        # Try Nippon first.
+        inav = self.nippon.fetch(clean_symbol)
 
+        # If Nippon does not cover the symbol, try Mirae.
+        if inav is None:
+            inav = self.mirae.fetch(clean_symbol)
+
+        if inav is None:
             return INAVData(
                 symbol=clean_symbol,
                 ltp=ltp,
@@ -298,49 +325,21 @@ class INAVService:
                 signal="UNAVAILABLE",
             )
 
-        row = self._cache.get(
-            clean_symbol
-        )
-
-        # Not an ETF / not present in NSE ETF table.
-        if row is None:
-
-            return INAVData(
-                symbol=clean_symbol,
-                ltp=ltp,
-                inav=None,
-                premium_discount_pct=None,
-                signal="N/A",
-            )
-
-        if ltp is None:
-
-            ltp = self._extract_ltp(
-                row
-            )
-
-        inav = self._extract_inav(
-            row
-        )
-
         premium_discount = None
 
         if (
             ltp is not None
-            and inav is not None
             and inav > 0
         ):
-
             premium_discount = round(
                 (
                     (ltp - inav)
                     / inav
-                )
-                * 100,
+                ) * 100,
                 2,
             )
 
-        signal = self._signal(
+        signal = self._calculate_signal(
             premium_discount
         )
 

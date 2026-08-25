@@ -128,14 +128,14 @@ def build_dashboard_dataframe(
                 "Day %": market_data.day_change_percent,
                 
                 "iNAV": market_data.inav,
-                "iNAV Premium/Discount %": market_data.inav_premium_discount_pct,
-                "iNAV Signal": market_data.inav_signal,
+                "iNAV Pre/Dis%": market_data.inav_premium_discount_pct,
+                "iNAV Sig": market_data.inav_signal,
                                
                 
                 "T5 %": market_data.t5_percent,
                 "T7 %": market_data.t7_percent,
-                "% From 50 DMA": percent_from_50dma,
-                "% From 200 DMA": percent_from_200dma,
+                "% Frm50 DMA": percent_from_50dma,
+                "% Fr200 DMA": percent_from_200dma,
                 "% 52W Low": percent_from_52w_low,
                 "% 52W High": percent_from_52w_high,
 

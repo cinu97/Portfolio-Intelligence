@@ -121,6 +121,7 @@ class RuleRegistry:
 
 def create_default_registry() -> RuleRegistry:
     """Create the existing V2 rule set in its established evaluation order."""
+    from analytics.rules.long_term_quality import LongTermQualityRule
     from analytics.rules.allocation import AllocationRule
     from analytics.rules.average_buy import AverageBuyRule
     from analytics.rules.fifty_two_week import FiftyTwoWeekRule
@@ -129,6 +130,7 @@ def create_default_registry() -> RuleRegistry:
 
     return RuleRegistry(
         (
+            LongTermQualityRule(),
             AverageBuyRule(),
             AllocationRule(),
             MomentumRule(),

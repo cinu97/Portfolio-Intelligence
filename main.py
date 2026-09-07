@@ -287,8 +287,21 @@ def main(detailed: bool = False) -> None:
     database = DatabaseManager()
     database.initialize()
 
-    recommendations = persist_market_snapshots(PortfolioEngine().run(), database)
-    recommendations.sort(key=lambda item: item[1].buy_score, reverse=True)
+    results = PortfolioEngine().run()
+    contexts = {
+    result.market.symbol: result.context
+    for result in results
+}
+
+    recommendations = persist_market_snapshots(
+        results,
+        database,
+    )
+
+    recommendations.sort(
+        key=lambda item: item[1].buy_score,
+        reverse=True,
+    )
 
     from analytics.investment_planner import InvestmentPlanner
     from config.settings import CONFIG
@@ -297,7 +310,23 @@ def main(detailed: bool = False) -> None:
 
     investment_plan = InvestmentPlanner.create_plan(
         recommendations=recommendations,
-        available_cash=planner_config.get("available_cash", 20000),
+        contexts=contexts,
+        available_cash=planner_config.get(
+            "monthly_budget",
+            30000,
+        ),
+        target_allocation_percent=planner_config.get(
+            "target_allocation_percent",
+            5,
+        ),
+        reserve_cash_percent=planner_config.get(
+            "reserve_cash_percent",
+            0,
+        ),
+        max_positions=planner_config.get(
+            "max_positions",
+            5,
+        ),
     )
     investment_plan_df = build_investment_plan_dataframe(
     investment_plan

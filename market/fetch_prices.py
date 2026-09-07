@@ -48,6 +48,10 @@ class MarketDataService:
 
             technical = TechnicalService.calculate(df)
 
+            # Remove rows where Close is unavailable.
+            # This is important on weekends/market holidays and when
+            # the data provider returns incomplete rows.
+            df = df.dropna(subset=["Close"])
             df = df.tail(8)
 
             if len(df) < 8:

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 
 from analytics.portfolio_context import PortfolioContext
@@ -11,16 +13,33 @@ class MovingAverageResult:
 
 
 class MovingAverageRule(InvestmentRule):
-    """Score a price trading below the existing moving-average thresholds."""
+    """
+    Score long-term trend health.
+
+    Being below a moving average is now negative evidence rather than a
+    reason to award additional BUY points.
+    """
 
     MAX_SCORE = 15
     key = "moving_average"
 
     def evaluate(self, context: PortfolioContext) -> RuleResult:
-        """Adapt the existing moving-average calculation to the rule interface."""
-        result = self.calculate(context.current_price, context.dma50, context.dma200)
-        below_dma50 = context.current_price < context.dma50
-        below_dma200 = context.current_price < context.dma200
+        result = self.calculate(
+            context.current_price,
+            context.dma50,
+            context.dma200,
+        )
+
+        above_dma50 = (
+            context.dma50 > 0
+            and context.current_price >= context.dma50
+        )
+
+        above_dma200 = (
+            context.dma200 > 0
+            and context.current_price >= context.dma200
+        )
+
         return RuleResult(
             score=result.score,
             reasons=result.reasons,
@@ -29,23 +48,23 @@ class MovingAverageRule(InvestmentRule):
                 RuleContribution(
                     rule_key=self.key,
                     label="Moving Average (50 DMA)",
-                    score=5 if below_dma50 else 0,
+                    score=5 if above_dma50 else 0,
                     max_score=5,
                     reason=(
-                        "Trading below 50 DMA"
-                        if below_dma50
-                        else "At or above 50 DMA"
+                        "Trading above 50 DMA"
+                        if above_dma50
+                        else "Trading below 50 DMA"
                     ),
                 ),
                 RuleContribution(
                     rule_key=self.key,
                     label="Moving Average (200 DMA)",
-                    score=10 if below_dma200 else 0,
+                    score=10 if above_dma200 else 0,
                     max_score=10,
                     reason=(
-                        "Trading below 200 DMA"
-                        if below_dma200
-                        else "At or above 200 DMA"
+                        "Trading above 200 DMA"
+                        if above_dma200
+                        else "Trading below 200 DMA"
                     ),
                 ),
             ],
@@ -60,18 +79,21 @@ class MovingAverageRule(InvestmentRule):
     ) -> MovingAverageResult:
 
         score = 0
+        reasons: list[str] = []
 
-        reasons = []
+        if dma50 > 0:
+            if current >= dma50:
+                score += 5
+                reasons.append("Trading above 50 DMA")
+            else:
+                reasons.append("Trading below 50 DMA")
 
-        if current < dma50:
-
-            score += 5
-            reasons.append("Trading below 50 DMA")
-
-        if current < dma200:
-
-            score += 10
-            reasons.append("Trading below 200 DMA")
+        if dma200 > 0:
+            if current >= dma200:
+                score += 10
+                reasons.append("Trading above 200 DMA")
+            else:
+                reasons.append("Trading below 200 DMA")
 
         return MovingAverageResult(
             score=score,

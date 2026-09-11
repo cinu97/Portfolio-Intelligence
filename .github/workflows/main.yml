@@ -4,7 +4,9 @@ on:
   workflow_dispatch:
 
   schedule:
-    - cron: "45 3-9 * * 1-5"
+    - cron: "45,55 3 * * 1-5"
+    - cron: "5-55/10 4-8 * * 1-5"
+    - cron: "5,15,25,35,45 9 * * 1-5"
 
 jobs:
   portfolio:

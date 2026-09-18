@@ -1,12 +1,15 @@
 from __future__ import annotations
-from market.inav_providers.nippon import NipponINAVProvider
-from market.inav_providers.mirae import MiraeINAVProvider
+
 import logging
 from dataclasses import dataclass
 from typing import Optional
 
 import requests
 
+from market.inav_mapping import INAV_PROVIDER_ROUTING
+from market.inav_providers.invesco import InvescoINAVProvider
+from market.inav_providers.mirae import MiraeINAVProvider
+from market.inav_providers.nippon import NipponINAVProvider
 
 LOGGER = logging.getLogger(__name__)
 
@@ -18,6 +21,7 @@ class INAVData:
     inav: Optional[float]
     premium_discount_pct: Optional[float]
     signal: str
+    source: str = ""
 
 
 class INAVService:
@@ -68,6 +72,22 @@ class INAVService:
         self._loaded = False
         self.nippon = NipponINAVProvider()
         self.mirae = MiraeINAVProvider()
+        self.invesco = InvescoINAVProvider()
+
+    @staticmethod
+    def provider_for_symbol(symbol: str) -> str:
+        clean = symbol.strip().upper()
+        return INAV_PROVIDER_ROUTING.get(clean, "nse")
+
+    @staticmethod
+    def normalize_inav(symbol: str, value: Optional[float], source: str = "") -> INAVData:
+        clean_symbol = symbol.strip().upper()
+        normalized = None if value is None else float(value)
+        signal = "UNAVAILABLE"
+        premium = None
+        if normalized is not None and normalized > 0:
+            signal = "FAIR"
+        return INAVData(symbol=clean_symbol, ltp=None, inav=normalized, premium_discount_pct=premium, signal=signal, source=source)
 
     def _prime_session(self) -> None:
         """

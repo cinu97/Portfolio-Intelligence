@@ -147,8 +147,11 @@ def build_dashboard_dataframe(
                 "52W High": week52_high,
                 
                 # New DMA columns
-                "50 DMA": dma50,                
+                "50 DMA": dma50,
                 "200 DMA": dma200,
+                "RSI-14": market_data.rsi14,
+                "EMA-63": market_data.ema63,
+                "EMA-63 Slope %": market_data.ema63_slope,
                 "Score": recommendation.buy_score,
 
             }
@@ -161,7 +164,7 @@ def build_decision_trace_dataframe(
     recommendations: list[RecommendationPair],
 ) -> pd.DataFrame:
     """Convert each recommendation trace to one Sheets-ready summary row."""
-    columns = [
+    base_columns = [
         "Symbol",
         "Final Score",
         "Action",
@@ -176,14 +179,14 @@ def build_decision_trace_dataframe(
         "200 DMA Score",
         "Combined Reasons",
     ]
+    optional_columns = ["RSI-14", "EMA-63", "EMA-63 Slope %"]
     trace_rows = []
     for _, recommendation in recommendations:
         scores_by_label = {
             contribution.label: contribution.score
             for contribution in recommendation.rule_breakdown
         }
-        trace_rows.append(
-            {
+        row = {
             "Symbol": recommendation.symbol,
             "Final Score": recommendation.buy_score,
             "Action": recommendation.action,
@@ -197,8 +200,21 @@ def build_decision_trace_dataframe(
             "50 DMA Score": scores_by_label.get("Moving Average (50 DMA)", 0),
             "200 DMA Score": scores_by_label.get("Moving Average (200 DMA)", 0),
             "Combined Reasons": "; ".join(recommendation.reasons),
-            }
-        )
+        }
+        for key in optional_columns:
+            value = getattr(recommendation, {
+                "RSI-14": "rsi14",
+                "EMA-63": "ema63",
+                "EMA-63 Slope %": "ema63_slope",
+            }[key], None)
+            if value is not None:
+                row[key] = value
+        trace_rows.append(row)
+
+    columns = base_columns + [
+        key for key in optional_columns
+        if any(key in row for row in trace_rows)
+    ]
     return pd.DataFrame(trace_rows, columns=columns)
 
 

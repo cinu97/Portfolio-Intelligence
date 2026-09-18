@@ -28,11 +28,14 @@ class MarketData:
 
     dma50: float
     dma200: float
+    rsi14: float | None = None
+    ema63: float | None = None
+    ema63_slope: float | None = None
 
-    range_percent: float
+    range_percent: float = 0.0
 
-    buy_score: int
-    recommendation: str
+    buy_score: int = 0
+    recommendation: str = ""
 
     # iNAV fields MUST be after all required fields
     inav: float | None = None

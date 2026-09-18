@@ -36,3 +36,6 @@ class PortfolioContext:
 
     dma50: float
     dma200: float
+    rsi14: float | None = None
+    ema63: float | None = None
+    ema63_slope: float | None = None

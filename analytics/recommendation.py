@@ -22,6 +22,9 @@ class Recommendation:
     reasons: list[str]
     rule_breakdown: list[RuleContribution] = field(default_factory=list)
     intelligence: IntelligenceSignal | None = None
+    rsi14: float | None = None
+    ema63: float | None = None
+    ema63_slope: float | None = None
 
 
 class RecommendationEngine:
@@ -214,4 +217,7 @@ class RecommendationEngine:
             reasons=reasons,
             rule_breakdown=score_result.rule_breakdown,
             intelligence=intelligence,
+            rsi14=context.rsi14,
+            ema63=context.ema63,
+            ema63_slope=context.ema63_slope,
         )

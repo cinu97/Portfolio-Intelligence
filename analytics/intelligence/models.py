@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 
@@ -18,6 +18,22 @@ class Confidence(str, Enum):
 
 
 @dataclass(slots=True)
+class InstrumentMetadata:
+    symbol: str
+    yahoo_symbol: str
+    instrument_type: str
+    provider: str = ""
+    underlying_index: str = ""
+    primary_theme: str = "unknown"
+    themes: tuple[str, ...] = ()
+    asset_class: str = ""
+    inav_provider: str = ""
+    news_search_terms: tuple[str, ...] = ()
+    news_themes: tuple[str, ...] = ()
+    geographic_exposure: str = ""
+
+
+@dataclass(slots=True)
 class NewsItem:
     title: str
     source: str
@@ -25,6 +41,12 @@ class NewsItem:
     published_at: datetime | None
     summary: str = ""
     themes: tuple[str, ...] = ()
+    symbol: str = ""
+    direction: SignalDirection | None = None
+    strength: str = ""
+    confidence: Confidence | None = None
+    reason: str = ""
+    search_term: str = ""
 
 
 @dataclass(slots=True)
@@ -38,6 +60,10 @@ class NewsEvidence:
     direction: SignalDirection
     strength: str
     score: int
+    symbol: str = ""
+    published_at: datetime | None = None
+    search_term: str = ""
+    reason: str = ""
 
 
 @dataclass(slots=True)
@@ -48,3 +74,7 @@ class IntelligenceSignal:
     reasons: list[str]
     sources: list[str]
     evidence: list[NewsEvidence]
+    symbol: str = ""
+    news_score: int = 0
+    confidence_value: int = 0
+    raw_evidence: list[NewsEvidence] = field(default_factory=list)

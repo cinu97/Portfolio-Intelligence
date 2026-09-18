@@ -19,9 +19,17 @@ class Settings:
             self.CONFIG_DIR / "credentials.json"
         )
 
+        self.GOOGLE_OAUTH_CLIENT = (
+            self.CONFIG_DIR / "oauth_client.json"
+        )
+
+        self.GOOGLE_OAUTH_TOKEN = (
+            self.CONFIG_DIR / "oauth_token.json"
+        )
+
         self.GOOGLE_SHEET_ID = os.getenv(
             "GOOGLE_SHEET_ID",
-            "1adR1Ku_FNIoLsD0PNBQfyk0h-yo3wRpX-yBr7kDXcB8",
+            "1Y-nm8OKS47LXudA643uAS6-FPM_abKSz0mqI-znGe-U",
         )
 
         self.LOG_LEVEL = os.getenv(

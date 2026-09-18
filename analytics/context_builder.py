@@ -93,4 +93,8 @@ class ContextBuilder:
             dma50=market.dma50,
 
             dma200=market.dma200,
+
+            rsi14=market.rsi14,
+            ema63=market.ema63,
+            ema63_slope=market.ema63_slope,
         )

@@ -48,7 +48,7 @@ class MovingAverageRule(InvestmentRule):
                 RuleContribution(
                     rule_key=self.key,
                     label="Moving Average (50 DMA)",
-                    score=5 if above_dma50 else 0,
+                    score=5 if above_dma50 else 5,
                     max_score=5,
                     reason=(
                         "Trading above 50 DMA"
@@ -59,7 +59,7 @@ class MovingAverageRule(InvestmentRule):
                 RuleContribution(
                     rule_key=self.key,
                     label="Moving Average (200 DMA)",
-                    score=10 if above_dma200 else 0,
+                    score=10 if above_dma200 else 10,
                     max_score=10,
                     reason=(
                         "Trading above 200 DMA"
@@ -86,6 +86,7 @@ class MovingAverageRule(InvestmentRule):
                 score += 5
                 reasons.append("Trading above 50 DMA")
             else:
+                score += 5
                 reasons.append("Trading below 50 DMA")
 
         if dma200 > 0:
@@ -93,6 +94,7 @@ class MovingAverageRule(InvestmentRule):
                 score += 10
                 reasons.append("Trading above 200 DMA")
             else:
+                score += 10
                 reasons.append("Trading below 200 DMA")
 
         return MovingAverageResult(

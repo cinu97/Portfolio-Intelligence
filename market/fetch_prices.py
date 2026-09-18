@@ -149,6 +149,10 @@ class MarketDataService:
                         "dma200"
                     ],
 
+                    rsi14=technical.get("rsi14"),
+                    ema63=technical.get("ema63"),
+                    ema63_slope=technical.get("ema63_slope"),
+
                     range_percent=technical[
                         "range_percent"
                     ],

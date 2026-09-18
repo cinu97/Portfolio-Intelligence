@@ -9,6 +9,8 @@ venv/
 
 # Secrets
 config/credentials.json
+config/oauth_client.json
+config/oauth_token.json
 .env
 
 # Database

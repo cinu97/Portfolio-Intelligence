@@ -29,7 +29,7 @@ class Settings:
 
         self.GOOGLE_SHEET_ID = os.getenv(
             "GOOGLE_SHEET_ID",
-            "1Y-nm8OKS47LXudA643uAS6-FPM_abKSz0mqI-znGe-U",
+            "1WfXiXFvcL1tHin6Ar9x3dC7VUhn2DT7JA7vhAxAcOXc",
         )
 
         self.LOG_LEVEL = os.getenv(

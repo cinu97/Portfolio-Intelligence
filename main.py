@@ -234,8 +234,12 @@ def publish_reports(
         google.portfolio(holdings)
         google.decision_trace(decision_trace)
         google.investment_plan(investment_plan)
-    except Exception:
-        LOGGER.exception("Google Sheets publishing failed; results remain available locally.")
+    except Exception as exc:
+        LOGGER.exception("Google Sheets publishing failed.")
+        raise RuntimeError(
+            "Google Sheets was not updated. Configure config/oauth_client.json "
+            "and complete the browser sign-in, or provide valid service-account credentials."
+        ) from exc
 
 
 def print_recommendations(recommendations: list[RecommendationPair]) -> None:

@@ -35,7 +35,11 @@ def get_google_client() -> gspread.Client:
 
     credentials_json = os.getenv("GOOGLE_CREDENTIALS_JSON")
 
-    if not credentials_json and settings.GOOGLE_OAUTH_CLIENT.exists():
+    if (
+        not credentials_json
+        and settings.GOOGLE_OAUTH_CLIENT.exists()
+        and settings.GOOGLE_OAUTH_CLIENT.stat().st_size > 0
+    ):
         credentials = None
         if settings.GOOGLE_OAUTH_TOKEN.exists():
             credentials = UserCredentials.from_authorized_user_file(
@@ -83,6 +87,11 @@ def get_google_client() -> gspread.Client:
                 raise RuntimeError(
                     "config/credentials.json still contains placeholders. "
                     "Replace it with the original service-account JSON downloaded from Google Cloud."
+                )
+            if "BEGIN PRIVATE KEY" not in credentials_info["private_key"]:
+                raise RuntimeError(
+                    "config/credentials.json has no PEM private key. "
+                    "The private_key field must contain the full key from the downloaded service-account JSON; a key ID is not sufficient."
                 )
             credentials = Credentials.from_service_account_info(
                 credentials_info,
